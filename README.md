@@ -26,9 +26,9 @@ side by side with a synchronised camera.
 
 A detailed guide (Korean) is in [`docs/SIBR-4D_manual_ko.pdf`](docs/SIBR-4D_manual_ko.pdf).
 
-For analysing static 3DGS models (GT evaluation, anti-aliasing and zoom, flicker along camera paths, pruning
-simulation, training-progress playback), see the sister project
-[3DGS-Analyzer](https://github.com/DonghoLEE-CV/3DGS-Analyzer).
+For analysing static 3DGS models (GT evaluation, multi-scale evaluation, anti-aliasing and zoom, flicker along camera
+paths, pruning simulation, training-progress playback), use the companion viewer
+[SIBR-3D](https://github.com/DonghoLEE-CV/3dgs-sibr-analyzer) (`3dgs-sibr-analyzer`).
 
 ## Requirements
 
