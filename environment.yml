@@ -1,0 +1,11 @@
+# conda environment used by SIBR-4D (setup.bat creates it as a local prefix env in .\env)
+# Manual alternative:
+#   conda env create -p .\env -f environment.yml
+#   .\env\python.exe -m pip install -r requirements.txt
+name: sibr4d
+channels:
+  - nvidia/label/cuda-12.4.1
+  - conda-forge
+dependencies:
+  - python=3.10
+  - cuda-toolkit=12.4.1

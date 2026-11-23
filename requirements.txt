@@ -1,0 +1,11 @@
+# Python packages for SIBR-4D (installed into env\ by setup.bat; Python 3.10)
+# PyTorch is only needed by tools/export_g4d.py (4DGaussians -> sequence.g4d); the viewer itself does not use Python.
+#
+# Manual install into an existing Python 3.10 environment:
+#   pip install -r requirements.txt
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.5.1
+numpy<2.3
+# build tools used by setup.bat to configure and compile the viewer
+cmake>=3.27
+ninja

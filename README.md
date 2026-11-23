@@ -36,6 +36,15 @@ Setup creates everything inside the repository folder (`env\`, `third_party\`, `
 a conda environment with Python 3.10, the CUDA 12.4 compiler and PyTorch 2.5.1, the pinned SIBR and
 4DGaussians sources, and the built viewer. The first run takes 20-40 minutes.
 
+Dependencies are listed in [`environment.yml`](environment.yml) (conda: Python, CUDA toolkit) and
+[`requirements.txt`](requirements.txt) (pip: PyTorch, NumPy, CMake, Ninja); `setup.bat` installs both.
+To prepare the environment by hand instead:
+
+```bat
+conda env create -p .\env -f environment.yml
+.\env\python.exe -m pip install -r requirements.txt
+```
+
 ## Use
 
 ```bat

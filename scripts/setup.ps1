@@ -106,13 +106,8 @@ if (-not (Test-Path (Join-Path $Env "bin\nvcc.exe"))) {
     Run $conda @("install", "-y", "-p", $Env, "--override-channels", "-c", $CUDA_CHANNEL, "-c", "conda-forge", "cuda-toolkit=12.4.1") "conda.log"
 }
 Ok "nvcc: $((& (Join-Path $Env 'bin\nvcc.exe') --version | Select-String 'release') -join ' ')"
-& $py -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('torch') else 1)"
-if ($LASTEXITCODE -eq 0) { & $py -c "import torch, sys; sys.exit(0 if torch.__version__.startswith('2.5.1') else 1)" 2>&1 | Out-Null }
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  installing PyTorch 2.5.1 (cu124, ~2.5 GB download) ..."
-    Run $py @("-m", "pip", "install", "torch==2.5.1", "--index-url", "https://download.pytorch.org/whl/cu124") "pip.log"
-}
-Run $py @("-m", "pip", "install", "numpy<2.3", "cmake>=3.27", "ninja") "pip.log"
+Write-Host "  installing Python packages from requirements.txt (PyTorch 2.5.1 cu124 is ~2.5 GB the first time) ..."
+Run $py @("-m", "pip", "install", "-r", (Join-Path $Root "requirements.txt")) "pip.log"
 & $py -c "import torch; assert torch.cuda.is_available(); print('  [ok] torch', torch.__version__, torch.cuda.get_device_name(0))"
 if ($LASTEXITCODE -ne 0) { Fail "PyTorch cannot use the GPU (update the NVIDIA driver)" }
 
