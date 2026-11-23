@@ -1,0 +1,8 @@
+env/
+third_party/
+logs/
+__pycache__/
+*.pyc
+models/
+*.g4d
+setup_console.txt

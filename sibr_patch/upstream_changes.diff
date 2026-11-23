@@ -1,0 +1,245 @@
+diff --git a/src/projects/gaussianviewer/apps/CMakeLists.txt b/src/projects/gaussianviewer/apps/CMakeLists.txt
+index 29fb6b4..e840edc 100644
+--- a/src/projects/gaussianviewer/apps/CMakeLists.txt
++++ b/src/projects/gaussianviewer/apps/CMakeLists.txt
+@@ -11,4 +11,5 @@
+ 
+ project(SIBR_gaussian_apps)
+ 
+-add_subdirectory(gaussianViewer/)
+\ No newline at end of file
++add_subdirectory(gaussianViewer/)
++add_subdirectory(gaussian4D/)
+diff --git a/src/projects/gaussianviewer/renderer/CMakeLists.txt b/src/projects/gaussianviewer/renderer/CMakeLists.txt
+index f95f329..729b7fc 100644
+--- a/src/projects/gaussianviewer/renderer/CMakeLists.txt
++++ b/src/projects/gaussianviewer/renderer/CMakeLists.txt
+@@ -8,7 +8,7 @@
+ # For inquiries contact sibr@inria.fr and/or George.Drettakis@inria.fr
+ 
+ set(SIBR_PROJECT "gaussian")
+-project(sibr_${SIBR_PROJECT} LANGUAGES CXX)
++project(sibr_${SIBR_PROJECT} LANGUAGES CXX CUDA)
+ 
+ sibr_gitlibrary(TARGET CudaRasterizer
+     GIT_REPOSITORY 	"https://github.com/graphdeco-inria/diff-gaussian-rasterization.git"
+@@ -23,10 +23,12 @@ source_group("Source Files" FILES ${SOURCES})
+ file(GLOB SHADERS "shaders/*.frag" "shaders/*.vert" "shaders/*.geom")
+ source_group("Source Files\\shaders" FILES ${SHADERS})
+ 
+-file(GLOB SOURCES "*.cpp" "*.h" "*.hpp" "shaders/*.frag" "shaders/*.vert" "shaders/*.geom")
++file(GLOB SOURCES "*.cpp" "*.cu" "*.h" "*.hpp" "shaders/*.frag" "shaders/*.vert" "shaders/*.geom")
+ 
+ ## Specify target rules
+ add_library(${PROJECT_NAME} SHARED ${SOURCES})
++# SIBR-4D: G4DSequence.cu must use the same shared cudart as CUDA::cudart below
++set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_RUNTIME_LIBRARY Shared)
+ 
+ include_directories(${Boost_INCLUDE_DIRS} .)
+ if (WIN32)
+diff --git a/src/projects/gaussianviewer/renderer/GaussianSurfaceRenderer.cpp b/src/projects/gaussianviewer/renderer/GaussianSurfaceRenderer.cpp
+index 0ba7b46..75b6eb3 100644
+--- a/src/projects/gaussianviewer/renderer/GaussianSurfaceRenderer.cpp
++++ b/src/projects/gaussianviewer/renderer/GaussianSurfaceRenderer.cpp
+@@ -24,11 +24,12 @@ namespace sibr {
+ 		glCreateBuffers(1, &scaleBuffer);
+ 		glCreateBuffers(1, &alphaBuffer);
+ 		glCreateBuffers(1, &colorBuffer);
+-		glNamedBufferStorage(meanBuffer, num_gaussians * 3 * sizeof(float), mean_data, 0);
+-		glNamedBufferStorage(rotBuffer, num_gaussians * 4 * sizeof(float), rot_data, 0);
+-		glNamedBufferStorage(scaleBuffer, num_gaussians * 3 * sizeof(float), scale_data, 0);
+-		glNamedBufferStorage(alphaBuffer, num_gaussians * sizeof(float), alpha_data, 0);
+-		glNamedBufferStorage(colorBuffer, num_gaussians * sizeof(float) * 48, color_data, 0);
++		// SIBR-4D: dynamic storage so per-frame Gaussians can be copied in via CUDA-GL interop
++		glNamedBufferStorage(meanBuffer, num_gaussians * 3 * sizeof(float), mean_data, GL_DYNAMIC_STORAGE_BIT);
++		glNamedBufferStorage(rotBuffer, num_gaussians * 4 * sizeof(float), rot_data, GL_DYNAMIC_STORAGE_BIT);
++		glNamedBufferStorage(scaleBuffer, num_gaussians * 3 * sizeof(float), scale_data, GL_DYNAMIC_STORAGE_BIT);
++		glNamedBufferStorage(alphaBuffer, num_gaussians * sizeof(float), alpha_data, GL_DYNAMIC_STORAGE_BIT);
++		glNamedBufferStorage(colorBuffer, num_gaussians * sizeof(float) * 48, color_data, GL_DYNAMIC_STORAGE_BIT);
+ 	}
+ 
+ 	void GaussianData::render(int G) const
+diff --git a/src/projects/gaussianviewer/renderer/GaussianSurfaceRenderer.hpp b/src/projects/gaussianviewer/renderer/GaussianSurfaceRenderer.hpp
+index 5d4f06c..cf7a2fe 100644
+--- a/src/projects/gaussianviewer/renderer/GaussianSurfaceRenderer.hpp
++++ b/src/projects/gaussianviewer/renderer/GaussianSurfaceRenderer.hpp
+@@ -33,6 +33,9 @@ namespace sibr {
+ 
+ 		void render(int G) const;
+ 
++		/// SIBR-4D: GL buffer ids (0 mean, 1 rot, 2 scale, 3 alpha, 4 sh colors) for CUDA-GL interop updates
++		GLuint buffer(int i) const { return i == 0 ? meanBuffer : i == 1 ? rotBuffer : i == 2 ? scaleBuffer : i == 3 ? alphaBuffer : colorBuffer; }
++
+ 	private:
+ 
+ 		int _num_gaussians;
+diff --git a/src/projects/gaussianviewer/renderer/GaussianView.cpp b/src/projects/gaussianviewer/renderer/GaussianView.cpp
+index e4400ab..dcbf819 100644
+--- a/src/projects/gaussianviewer/renderer/GaussianView.cpp
++++ b/src/projects/gaussianviewer/renderer/GaussianView.cpp
+@@ -15,6 +15,12 @@
+ #include <boost/asio.hpp>
+ #include <rasterizer.h>
+ #include <imgui_internal.h>
++#include <chrono>
++#include <fstream>
++
++// SIBR-4D (11-23) — implemented in G4DSequence.cu
++size_t g4dFrameBytes(int N);
++void g4dUnpackFrame(const void* frame, int N, float* pos, float* rot, float* scale, float* opacity, float* shs);
+ 
+ // Define the types and sizes that make up the contents of each Gaussian 
+ // in the trained model.
+@@ -439,6 +445,65 @@ sibr::GaussianView::GaussianView(const sibr::BasicIBRScene::Ptr & ibrScene, uint
+ 	geomBufferFunc = resizeFunctional(&geomPtr, allocdGeom);
+ 	binningBufferFunc = resizeFunctional(&binningPtr, allocdBinning);
+ 	imgBufferFunc = resizeFunctional(&imgPtr, allocdImg);
++
++	// SIBR-4D: <model>/point_cloud/iteration_N/point_cloud.ply -> <model>/sequence.g4d
++	std::string p(file);
++	for (auto& c : p) if (c == '\\') c = '/';
++	for (int up = 0; up < 3; up++) { size_t s = p.find_last_of('/'); if (s != std::string::npos) p = p.substr(0, s); }
++	std::string seq = p + "/sequence.g4d";
++	if (std::ifstream(seq).good())
++		loadSequence(seq);
++}
++
++bool sibr::GaussianView::loadSequence(const std::string& path)
++{
++	std::ifstream f(path, std::ios_base::binary);
++	char magic[4]; int N = 0, F = 0, shc = 0; float tlast = 1.f; char pad[12];
++	f.read(magic, 4); f.read((char*)&N, 4); f.read((char*)&F, 4); f.read((char*)&shc, 4); f.read((char*)&tlast, 4); f.read(pad, 12);
++	if (std::string(magic, 4) != "G4D1" || shc != 16 || F <= 0)
++	{
++		SIBR_WRG << "sequence.g4d: bad header, staying static" << std::endl;
++		return false;
++	}
++	if (N != count)
++	{
++		SIBR_WRG << "sequence.g4d: N=" << N << " but ply has " << count << ", staying static" << std::endl;
++		return false;
++	}
++	_seqFrameBytes = g4dFrameBytes(N);
++	size_t total = _seqFrameBytes * (size_t)F;
++	if (cudaMalloc((void**)&_seqCuda, total) != cudaSuccess)
++	{
++		SIBR_WRG << "sequence.g4d: not enough GPU memory for " << total / 1e9 << " GB, staying static" << std::endl;
++		cudaGetLastError();
++		_seqCuda = nullptr;
++		return false;
++	}
++	SIBR_LOG << "Loading 4D sequence " << path << ": " << F << " frames, " << total / 1e9 << " GB to GPU" << std::endl;
++	std::vector<char> buf(_seqFrameBytes);
++	for (int k = 0; k < F; k++)
++	{
++		f.read(buf.data(), _seqFrameBytes);
++		if (!f) { SIBR_WRG << "sequence.g4d truncated at frame " << k << std::endl; F = k; break; }
++		CUDA_SAFE_CALL_ALWAYS(cudaMemcpy(_seqCuda + _seqFrameBytes * k, buf.data(), _seqFrameBytes, cudaMemcpyHostToDevice));
++	}
++	_seqFrames = F;
++	_seqTLast = tlast;
++	_seqPath = path;
++	_seqLoaded = F > 0;
++	_seqShown = -1;
++	if (_seqLoaded) showFrame(0);
++	return _seqLoaded;
++}
++
++void sibr::GaussianView::showFrame(int fr)
++{
++	if (!_seqLoaded) return;
++	fr = std::max(0, std::min(_seqFrames - 1, fr));
++	_seqFrame = fr;
++	if (fr == _seqShown) return;
++	g4dUnpackFrame(_seqCuda + _seqFrameBytes * fr, count, pos_cuda, rot_cuda, scale_cuda, opacity_cuda, shs_cuda);
++	_seqShown = fr;
+ }
+ 
+ void sibr::GaussianView::setScene(const sibr::BasicIBRScene::Ptr & newScene)
+@@ -468,6 +533,23 @@ void sibr::GaussianView::onRenderIBR(sibr::IRenderTarget & dst, const sibr::Came
+ 	}
+ 	else
+ 	{
++		// SIBR-4D: advance time while playing, then swap in that frame's Gaussians
++		if (_seqLoaded)
++		{
++			double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
++			if (_seqPlay && _seqLastTime > 0)
++			{
++				_seqAccum += (now - _seqLastTime) * _seqFps;
++				int step = int(_seqAccum);
++				_seqAccum -= step;
++				int nf = _seqFrame + step;
++				if (nf >= _seqFrames) nf = _seqLoop ? nf % _seqFrames : _seqFrames - 1;
++				_seqFrame = nf;
++			}
++			_seqLastTime = now;
++			showFrame(_seqFrame);
++		}
++
+ 		// Convert view and projection to target coordinate system
+ 		auto view_mat = eye.view();
+ 		auto proj_mat = eye.viewproj();
+@@ -606,6 +688,26 @@ void sibr::GaussianView::onGUI()
+ 
+ 	ImGui::End();
+ 
++	// SIBR-4D controls
++	if (_seqLoaded)
++	{
++		ImGui::Begin("4D Sequence");
++		ImGui::Text("%d frames  |  t = %.4f", _seqFrames, _seqFrames > 1 ? _seqTLast * _seqFrame / (_seqFrames - 1) : 0.f);
++		ImGui::SliderInt("Frame", &_seqFrame, 0, _seqFrames - 1);
++		if (ImGui::Button(_seqPlay ? "Pause" : "Play")) { _seqPlay = !_seqPlay; _seqAccum = 0; }
++		ImGui::SameLine();
++		if (ImGui::Button("|<")) { _seqFrame = 0; }
++		ImGui::SameLine();
++		if (ImGui::Button("<")) { _seqPlay = false; _seqFrame = std::max(0, _seqFrame - 1); }
++		ImGui::SameLine();
++		if (ImGui::Button(">")) { _seqPlay = false; _seqFrame = std::min(_seqFrames - 1, _seqFrame + 1); }
++		ImGui::SameLine();
++		ImGui::Checkbox("Loop", &_seqLoop);
++		ImGui::SliderFloat("Playback FPS", &_seqFps, 1.f, 60.f);
++		ImGui::TextDisabled("%s", _seqPath.c_str());
++		ImGui::End();
++	}
++
+ 	if(!*_dontshow && !accepted && _interop_failed)
+ 		ImGui::OpenPopup("Error Using Interop");
+ 
+@@ -637,6 +739,7 @@ void sibr::GaussianView::onGUI()
+ sibr::GaussianView::~GaussianView()
+ {
+ 	// Cleanup
++	if (_seqCuda) cudaFree(_seqCuda);
+ 	cudaFree(pos_cuda);
+ 	cudaFree(rot_cuda);
+ 	cudaFree(scale_cuda);
+diff --git a/src/projects/gaussianviewer/renderer/GaussianView.hpp b/src/projects/gaussianviewer/renderer/GaussianView.hpp
+index 94bacfc..98e37db 100644
+--- a/src/projects/gaussianviewer/renderer/GaussianView.hpp
++++ b/src/projects/gaussianviewer/renderer/GaussianView.hpp
+@@ -124,6 +124,23 @@ namespace sibr {
+ 		bool accepted = false;
+ 
+ 
++		// ---- SIBR-4D (11-23): pre-computed per-frame Gaussians (model_folder/sequence.g4d) ----
++		bool loadSequence(const std::string& path);
++		void showFrame(int f);
++		bool _seqLoaded = false;
++		int _seqFrames = 0;
++		int _seqFrame = 0;
++		int _seqShown = -1;
++		float _seqTLast = 1.f;
++		size_t _seqFrameBytes = 0;
++		char* _seqCuda = nullptr;
++		bool _seqPlay = false;
++		bool _seqLoop = true;
++		float _seqFps = 30.f;
++		double _seqAccum = 0.0;
++		double _seqLastTime = -1.0;
++		std::string _seqPath;
++
+ 		std::shared_ptr<sibr::BasicIBRScene> _scene; ///< The current scene.
+ 		PointBasedRenderer::Ptr _pointbasedrenderer;
+ 		BufferCopyRenderer* _copyRenderer;

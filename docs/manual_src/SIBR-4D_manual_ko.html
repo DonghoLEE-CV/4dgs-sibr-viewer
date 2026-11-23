@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>SIBR-4D 사용 설명서</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  body { font-family: "Malgun Gothic", "Segoe UI", sans-serif; font-size: 10.5pt; line-height: 1.55; color: #1b1b1b; }
+  h1 { font-size: 22pt; margin: 0 0 4mm 0; color: #14213d; }
+  h2 { font-size: 15pt; margin: 9mm 0 3mm 0; padding-bottom: 1.5mm; border-bottom: 1.5px solid #14213d; color: #14213d; page-break-after: avoid; }
+  h3 { font-size: 12pt; margin: 6mm 0 2mm 0; color: #23395b; page-break-after: avoid; }
+  p { margin: 1.5mm 0 2.5mm 0; }
+  code, pre { font-family: Consolas, "Courier New", monospace; font-size: 9.5pt; }
+  code { background: #f1f3f6; padding: 0 1mm; border-radius: 2px; }
+  pre { background: #f1f3f6; border: 1px solid #d7dce3; border-radius: 3px; padding: 2.5mm 3mm; white-space: pre-wrap; page-break-inside: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 2mm 0 4mm 0; page-break-inside: avoid; font-size: 9.8pt; }
+  th, td { border: 1px solid #c9cfd8; padding: 1.4mm 2mm; text-align: left; vertical-align: top; }
+  th { background: #e8ecf2; }
+  .cover { text-align: left; margin-top: 30mm; }
+  .cover .sub { font-size: 13pt; color: #3a4a63; margin-bottom: 12mm; }
+  .meta td { border: none; padding: 0.8mm 0; }
+  .note { border-left: 3px solid #e09f3e; background: #fff8ec; padding: 2mm 3mm; margin: 3mm 0; page-break-inside: avoid; }
+  .ok { border-left: 3px solid #2a9d8f; background: #eef8f6; padding: 2mm 3mm; margin: 3mm 0; page-break-inside: avoid; }
+  figure { margin: 3mm 0 5mm 0; page-break-inside: avoid; text-align: center; }
+  figure img { width: 100%; border: 1px solid #c9cfd8; }
+  figcaption { font-size: 9pt; color: #555; margin-top: 1.5mm; }
+  .pb { page-break-before: always; }
+  ol li, ul li { margin-bottom: 1mm; }
+  .toc a { text-decoration: none; color: #1b1b1b; }
+  .small { font-size: 9pt; color: #555; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>SIBR-4D 사용 설명서</h1>
+  <div class="sub">원본 3DGS SIBR 뷰어 기반 3DGS / 4DGS 재생·비교 뷰어 — 설치부터 사용까지</div>
+  <table class="meta">
+    <tr><td style="width:32mm">대상</td><td>3D/4D Gaussian Splatting 결과를 눈으로 확인하고 비교하려는 연구자</td></tr>
+    <tr><td>환경</td><td>Windows 10/11 64비트, NVIDIA GPU(compute capability 7.0 이상)</td></tr>
+    <tr><td>라이선스</td><td>비상업 연구·평가 용도 (Gaussian-Splatting License, SIBR core는 Apache-2.0)</td></tr>
+    <tr><td>문서 버전</td><td>2026-11-23</td></tr>
+  </table>
+  <figure style="margin-top:12mm"><img src="../img/grid4.png"><figcaption>같은 씬(Neu3D sear_steak)의 4DGS 학습 결과 4개를 2×2 격자로 동시에 비교하는 화면. 타일마다 1번 대비 PSNR이 표시됩니다.<br>장면 이미지: Neu3D 데이터셋(Li et al., CVPR 2022, CC BY-NC 4.0)으로 학습한 모델의 렌더링</figcaption></figure>
+</div>
+
+<div class="pb"></div>
+<h2>목차</h2>
+<ol class="toc">
+  <li>SIBR-4D가 하는 일</li>
+  <li>준비물</li>
+  <li>설치 (setup.bat)</li>
+  <li>실행과 모델 열기</li>
+  <li>화면 구성</li>
+  <li>카메라 조작</li>
+  <li>재생과 프레임 이동</li>
+  <li>보기 모드 8가지</li>
+  <li>여러 모델 비교</li>
+  <li>4DGaussians 결과 변환 (export_4dgs.bat)</li>
+  <li>모델 폴더와 sequence.g4d 형식</li>
+  <li>메모리 사용 (GPU / RAM)</li>
+  <li>문제 해결</li>
+  <li>사용한 라이브러리와 라이선스</li>
+</ol>
+
+<h2>1. SIBR-4D가 하는 일</h2>
+<p>3D Gaussian Splatting(3DGS) 논문의 공식 뷰어인 SIBR(Inria)은 정적인 3DGS 모델만 보여 줍니다. SIBR-4D는 이 원본 뷰어의 렌더링 코드(공식 CUDA 래스터라이저, SH 3차)를 그대로 쓰면서 다음을 더했습니다.</p>
+<ul>
+  <li><b>4D 재생</b>: 시간에 따라 변형되는 Gaussian(예: 4DGaussians)을 프레임별로 재생합니다. 모든 프레임을 미리 계산해 두기 때문에 끊김 없이 재생됩니다.</li>
+  <li><b>최대 4개 모델 비교</b>: 격자(가로·세로·2×2), 와이프(좌우 분할), 차이 영상, 오버레이(투명도 겹치기), 깜빡임 비교. 카메라와 프레임은 모든 보기에서 함께 움직입니다.</li>
+  <li><b>정량 표시</b>: 보기 사이 PSNR, 마우스 위치의 픽셀 값(RGB).</li>
+  <li><b>분석용 보기</b>: 움직임 크기·프레임 간 속도·불투명도·크기 열지도, 중심점(Points), 타원체(Ellipsoids).</li>
+  <li><b>편의 기능</b>: 마우스 회전·이동·확대, 학습 카메라로 이동, 드래그 앤 드롭, 패널 크기 조절, 글자 크기 조절.</li>
+</ul>
+<p>정적인 3DGS 결과 폴더(원본 SIBR이 여는 폴더)도 그대로 열립니다(1프레임으로 표시).</p>
+
+<h2>2. 준비물</h2>
+<table>
+  <tr><th style="width:38mm">항목</th><th>요구 사항</th><th style="width:48mm">없으면</th></tr>
+  <tr><td>운영체제</td><td>Windows 10 / 11, 64비트</td><td>—</td></tr>
+  <tr><td>GPU</td><td>NVIDIA, compute capability 7.0 이상(RTX 20 시리즈 이후). VRAM 8 GB 이상 권장</td><td>지원하지 않음</td></tr>
+  <tr><td>NVIDIA 드라이버</td><td>CUDA 12.4 이상을 지원하는 드라이버(550 이상)</td><td>nvidia.com/drivers 에서 설치</td></tr>
+  <tr><td>Visual Studio</td><td>2022 Community 또는 Build Tools, <b>“C++를 사용한 데스크톱 개발”</b> 워크로드</td><td>setup.bat이 winget 설치를 제안</td></tr>
+  <tr><td>Git</td><td>Git for Windows</td><td>setup.bat이 winget 설치를 제안</td></tr>
+  <tr><td>conda</td><td>Miniconda 또는 Anaconda</td><td>setup.bat이 winget 설치를 제안</td></tr>
+  <tr><td>디스크</td><td>약 12 GB (CUDA 컴파일러 3 GB, PyTorch 2.5 GB, SIBR 빌드 3 GB 등)</td><td>—</td></tr>
+  <tr><td>인터넷</td><td>첫 설치 때만 필요</td><td>—</td></tr>
+</table>
+<div class="note"><b>Smart App Control</b>이 켜진 Windows 11에서는 직접 빌드한 프로그램(서명 없음)이 실행되지 않을 수 있습니다. 실행이 “애플리케이션 제어 정책으로 차단됨”으로 막히면 Windows 보안 &gt; 앱 및 브라우저 컨트롤 &gt; Smart App Control 설정을 확인하세요. 이 설정을 끄면 다시 켤 수 없으므로 소속 기관의 보안 정책을 먼저 확인하는 것이 좋습니다.</div>
+
+<h2>3. 설치 (setup.bat)</h2>
+<h3>3.1 내려받기</h3>
+<p>GitHub 저장소 페이지에서 <b>Code &gt; Download ZIP</b>으로 받아 압축을 풀거나, Git으로 내려받습니다. 경로에 한글이나 공백이 없는 폴더(예: <code>C:\tools\sibr-4d-viewer</code>)를 권장합니다.</p>
+<pre>git clone https://github.com/&lt;저장소 주소&gt;.git C:\tools\sibr-4d-viewer</pre>
+<h3>3.2 setup.bat 실행</h3>
+<p>폴더 안의 <code>setup.bat</code>을 더블클릭합니다. 모든 파일은 <b>이 폴더 안에만</b> 설치되고, 시스템 Python이나 다른 conda 환경은 건드리지 않습니다. 처음에는 20~40분 걸립니다(대부분 다운로드와 컴파일).</p>
+<table>
+  <tr><th style="width:24mm">단계</th><th>하는 일</th><th style="width:40mm">결과</th></tr>
+  <tr><td>1/6 검사</td><td>64비트 Windows, NVIDIA GPU와 compute capability, Git, Visual Studio C++ 도구, conda를 확인합니다. 없는 것은 winget으로 설치할지 묻습니다. CUDA 12.4가 지원하는 MSVC(14.3x/14.4x)를 자동으로 고릅니다.</td><td>화면에 [ok] 표시</td></tr>
+  <tr><td>2/6 환경</td><td><code>env\</code>에 conda 환경을 만들고 Python 3.10(conda-forge), CUDA Toolkit 12.4.1(NVIDIA 채널), PyTorch 2.5.1(cu124), NumPy, CMake, Ninja를 설치합니다.</td><td><code>env\</code></td></tr>
+  <tr><td>3/6 소스</td><td>SIBR core(Inria, 커밋 4c4a953)와 4DGaussians(hustvl, 커밋 843d5ac)를 고정된 커밋으로 내려받습니다.</td><td><code>third_party\</code></td></tr>
+  <tr><td>4/6 패치</td><td><code>sibr_patch\</code>의 SIBR-4D 수정 파일을 SIBR 소스에 덮어씁니다.</td><td>—</td></tr>
+  <tr><td>5/6 빌드</td><td>CMake가 SIBR 의존 라이브러리(OpenCV, Boost 등, 약 0.5 GB)를 내려받고, Ninja + MSVC + nvcc로 뷰어를 빌드·설치합니다.</td><td><code>third_party\sibr_core\install\bin</code></td></tr>
+  <tr><td>6/6 확인</td><td>뷰어 창을 몇 초 띄웠다 닫아 DLL이 모두 있는지 확인합니다.</td><td>“SIBR-4D is ready.”</td></tr>
+</table>
+<div class="ok">다시 실행해도 안전합니다. 끝난 단계는 건너뜁니다. 빌드만 처음부터 다시 하려면 <code>setup.bat -Clean</code>, 설치 질문에 모두 “예”로 답하려면 <code>setup.bat -Yes</code>를 씁니다. 각 단계의 기록은 <code>logs\</code> 폴더(conda.log, pip.log, git.log, build.log)에 남습니다.</div>
+
+<h2 class="pb">4. 실행과 모델 열기</h2>
+<h3>4.1 실행</h3>
+<pre>run_viewer.bat                                   (빈 창으로 시작)
+run_viewer.bat D:\models\sear_steak              (모델 1개)
+run_viewer.bat D:\models\A D:\models\B D:\models\C D:\models\D   (최대 4개 비교)
+run_viewer.bat D:\models\A --mode 8              (Ellipsoids 보기로 시작)</pre>
+<p>모델 폴더를 <code>run_viewer.bat</code> 아이콘 위에 끌어다 놓아도 됩니다.</p>
+<h3>4.2 무엇을 열어야 하나 — “모델 폴더”</h3>
+<p>열 대상은 ply 파일 하나가 아니라 <b>모델 폴더</b>입니다. 모델 폴더에는 다음이 들어 있습니다.</p>
+<pre>모델 폴더\
+  cfg_args                                  학습 설정 (sh_degree, white_background 등)
+  cameras.json                              학습 카메라 (카메라 목록·스냅에 사용)
+  point_cloud\iteration_N\point_cloud.ply   Gaussian (4D 모델은 기준 형상)
+  sequence.g4d                              4D 모델만: 모든 프레임 (export_4dgs.bat이 만듦)</pre>
+<table>
+  <tr><th style="width:50mm">여는 방법</th><th>무엇을 고르나</th></tr>
+  <tr><td>File &gt; Open model folder…</td><td>모델 폴더를 선택합니다(파일 선택이 아님).</td></tr>
+  <tr><td>창에 드래그 앤 드롭</td><td>모델 폴더, 그 안의 아무 파일(ply·sequence.g4d 등, 상위 모델 폴더를 자동으로 찾음), 또는 모델 폴더 여러 개가 들어 있는 상위 폴더(안의 모델을 모두 엶) 중 무엇이든 됩니다.</td></tr>
+  <tr><td>명령줄</td><td>모델 폴더 경로를 인자로 줍니다.</td></tr>
+</table>
+<div class="note">서버에서 학습한 4DGaussians 출력 폴더를 바로 열면 <code>sequence.g4d</code>가 없어서 움직이지 않는 기준 형상만 보입니다. 재생하려면 먼저 10장의 <code>export_4dgs.bat</code>으로 변환하세요. 원본 3DGS 결과 폴더는 그대로 열립니다.</div>
+
+<h2>5. 화면 구성</h2>
+<figure><img src="../img/points_grid.png"><figcaption>왼쪽: 재생목록과 학습 카메라 목록 · 가운데: 보기(여기서는 Points 모드, 격자 4개) · 오른쪽: Compare setup / Render settings / Statistics · 아래: 타임라인</figcaption></figure>
+<table>
+  <tr><th style="width:36mm">영역</th><th>내용</th></tr>
+  <tr><td>메뉴바</td><td>File(열기·닫기·종료), View(보기 모드·배경·안티에일리어싱), Compare(비교 방식·기준 모델 교체), Camera(학습 카메라·FOV·조작 감도), Frame(재생·이동·FPS), Panels(패널 표시·크기 초기화·글자 크기). 오른쪽 회색 글씨는 마지막 상태 메시지입니다.</td></tr>
+  <tr><td>Playlist (왼쪽)</td><td>열린 모델 목록. 체크박스 = 비교에 포함(최대 4개), 이름 클릭 = 기준(보기 1)으로 지정, 이름 우클릭 = 기준 지정·닫기. 각 모델의 Gaussian 수, 프레임 수, 메모리. 아래에는 기준 모델의 학습 카메라 목록(&lt; &gt; Back Fit 버튼).</td></tr>
+  <tr><td>보기 (가운데)</td><td>렌더링 결과. 각 보기 왼쪽 위에 번호·모델 이름·PSNR이 표시됩니다.</td></tr>
+  <tr><td>Info (오른쪽)</td><td>Compare setup(비교 방식, 보기 수 1~4, 배치, 보기마다 모델 선택, 와이프·차이·오버레이 설정), Render settings(보기 모드와 모드별 설정), Statistics(렌더 시간, PSNR, 픽셀 값), 단축키 요약.</td></tr>
+  <tr><td>Timeline (아래)</td><td>Play/Pause, 처음·이전·다음·끝, Loop, 재생 FPS, 프레임 번호와 시간 t, 프레임 슬라이더.</td></tr>
+</table>
+<p><b>패널 크기</b>: 보기 둘레의 점 무늬 띠(왼쪽·오른쪽·아래)를 마우스로 끌면 패널 폭과 높이가 바뀝니다. <b>글자 크기</b>: <code>Ctrl +</code> / <code>Ctrl -</code> 또는 Panels 메뉴. 두 설정은 <code>sibr4d_settings.txt</code>에 저장되어 다음 실행에도 유지됩니다(Panels &gt; Reset panel sizes로 초기화).</p>
+
+<h2>6. 카메라 조작</h2>
+<p>마우스가 보기 위에 있을 때 동작합니다. 모든 보기는 같은 카메라를 씁니다.</p>
+<table>
+  <tr><th style="width:52mm">입력</th><th>동작</th></tr>
+  <tr><td>왼쪽 드래그</td><td>장면 중심(피벗)을 기준으로 회전</td></tr>
+  <tr><td>오른쪽 / 가운데 드래그 (또는 Shift + 왼쪽)</td><td>화면 평행 이동</td></tr>
+  <tr><td>휠</td><td>확대·축소(피벗 쪽으로 다가가기)</td></tr>
+  <tr><td>Ctrl + 휠</td><td>화각(FOV) 줌 — 카메라 위치는 그대로 두고 확대(연속 줌 관찰용)</td></tr>
+  <tr><td>W A S D / Q E</td><td>앞뒤·좌우 / 아래위 비행. Shift를 누르면 3배 빠름</td></tr>
+  <tr><td><code>[</code> / <code>]</code></td><td>이전 / 다음 학습 카메라로 이동(0.35초 동안 부드럽게)</td></tr>
+  <tr><td>R 또는 Back 버튼</td><td>현재 학습 카메라 시점으로 복귀(학습 영상과 같은 시점)</td></tr>
+  <tr><td>F 또는 Fit 버튼</td><td>장면 전체가 보이게 맞춤</td></tr>
+  <tr><td>왼쪽 카메라 목록 클릭</td><td>해당 학습 카메라로 이동</td></tr>
+</table>
+<p>회전·이동·비행 속도와 FOV 값은 Camera 메뉴에서 바꿉니다. Neu3D처럼 정면에서만 촬영한 씬은 크게 돌리면 보이지 않던 부분이 깨져 보이는 것이 정상입니다. 이때는 Back이나 <code>[</code> <code>]</code>로 학습 시점에 돌아오면 됩니다.</p>
+
+<h2 class="pb">7. 재생과 프레임 이동</h2>
+<table>
+  <tr><th style="width:52mm">입력</th><th>동작</th></tr>
+  <tr><td>Space / Play 버튼</td><td>재생·일시정지</td></tr>
+  <tr><td>← / →</td><td>한 프레임 이전·다음(재생 중이면 멈춤)</td></tr>
+  <tr><td>Home / End</td><td>첫 프레임 / 마지막 프레임</td></tr>
+  <tr><td>프레임 슬라이더</td><td>원하는 프레임으로 이동</td></tr>
+  <tr><td>Frame &gt; Go to frame</td><td>번호를 입력해 이동</td></tr>
+  <tr><td>fps 슬라이더 / Loop</td><td>재생 속도(1~60 fps), 끝에서 처음으로 반복</td></tr>
+</table>
+<p>여러 모델을 비교할 때 프레임 번호는 공통이며, 프레임 수가 적은 모델은 마지막 프레임에 머뭅니다. Neu3D 모델의 시간은 t = 프레임/300, D-NeRF 모델은 t = 프레임/(프레임 수−1)입니다.</p>
+
+<h2>8. 보기 모드 8가지</h2>
+<p>Render settings의 목록, View 메뉴, 또는 숫자키 1~8로 바꿉니다.</p>
+<table>
+  <tr><th style="width:8mm">키</th><th style="width:46mm">모드</th><th>설명 / 용도</th></tr>
+  <tr><td>1</td><td>Splats (SH3)</td><td>원본 3DGS와 같은 렌더링. 기본 모드</td></tr>
+  <tr><td>2</td><td>Splats (DC colour only)</td><td>시점에 따라 바뀌는 색(SH 1~3차)을 빼고 기본색만. 시점 의존 색이 얼마나 기여하는지 확인</td></tr>
+  <tr><td>3</td><td>Points (centres)</td><td>각 Gaussian의 중심만 점으로 표시. 분포와 밀도 확인</td></tr>
+  <tr><td>4</td><td>Motion heat</td><td>0번 프레임 대비 이동 거리(파랑=작음, 빨강=큼). 어디가 움직이는지 확인</td></tr>
+  <tr><td>5</td><td>Velocity heat</td><td>직전 프레임 대비 이동 거리. 프레임 사이 떨림(flicker) 확인</td></tr>
+  <tr><td>6</td><td>Opacity heat</td><td>불투명도 0~1</td></tr>
+  <tr><td>7</td><td>Scale heat</td><td>가장 긴 축 크기(log10). 큰 Gaussian이나 floater 찾기</td></tr>
+  <tr><td>8</td><td>Ellipsoids</td><td>각 Gaussian을 타원체로 표시(원본 SIBR 방식). 설정: Opacity cut(이 불투명도 이상은 실선, 나머지는 반투명으로 섞음), Size scale(크기 배율), Wireframe(선으로만)</td></tr>
+</table>
+<p>열지도(4~7)의 범위는 Auto heat range가 장면 크기에 맞춰 정하고, 끄면 min / max를 직접 입력합니다. Splats 계열에서는 Scaling modifier(Gaussian 크기 배율)와 Antialiasing을 쓸 수 있습니다. 배경색은 View 메뉴에서 모델 기본값 / 검정 / 흰색 중에 고릅니다.</p>
+<figure><img src="../img/ellipsoids.png"><figcaption>Ellipsoids 모드(D-NeRF lego, 4DGS). 오른쪽 Render settings에 Opacity cut, Size scale, Wireframe 설정이 있습니다.</figcaption></figure>
+
+<h2 class="pb">9. 여러 모델 비교</h2>
+<h3>9.1 비교할 모델 고르기</h3>
+<ol>
+  <li>모델을 2~4개 엽니다(명령줄, 드래그 앤 드롭, File &gt; Open).</li>
+  <li>Playlist의 체크박스로 비교에 넣고 뺍니다. 이름을 클릭하면 그 모델이 <b>보기 1(기준)</b>이 됩니다. 카메라 목록과 PSNR 기준은 보기 1입니다.</li>
+  <li>또는 오른쪽 Compare setup에서 보기마다 콤보 상자로 모델을 직접 고릅니다. 같은 모델을 두 보기에 넣을 수도 있습니다.</li>
+</ol>
+<h3>9.2 비교 방식</h3>
+<table>
+  <tr><th style="width:44mm">방식</th><th>설명</th></tr>
+  <tr><td>Single view</td><td>보기 1만 표시</td></tr>
+  <tr><td>Grid: 1-4 views</td><td>Views(1~4)와 Layout(Auto / Row 가로 / Column 세로 / 2×2)을 고릅니다. Auto는 2~3개면 가로, 4개면 2×2. 각 보기에 “PSNR vs 1”이 표시됩니다.</td></tr>
+  <tr><td>Wipe</td><td>한 화면을 좌우로 나눠 왼쪽은 보기 1, 오른쪽은 보기 2. 노란 분할선을 마우스로 직접 끌거나 Wipe 슬라이더로 옮깁니다.</td></tr>
+  <tr><td>Difference |1 − 2|</td><td>두 렌더링의 픽셀 차이 절댓값 × Diff gain. 어디가 다른지 한눈에 봅니다.</td></tr>
+  <tr><td>Overlay</td><td>보기 1 위에 보기 2를 Blend 비율(0~1)로 겹칩니다. Flicker를 켜면 1과 2를 지정한 Hz로 번갈아 보여 줍니다(작은 차이를 눈으로 찾기 좋음).</td></tr>
+</table>
+<p>Wipe / Difference / Overlay는 보기 1과 보기 2를 씁니다. 보기 2가 비어 있으면 열려 있는 다른 모델을 자동으로 채웁니다. <b>모델이 하나뿐이면</b> 같은 모델의 다른 프레임(기본 +1, Compare setup의 Frame offset으로 조절)과 비교하므로, 프레임 사이 변화나 떨림을 볼 때 씁니다.</p>
+<figure><img src="../img/overlay.png"><figcaption>Overlay 자기비교: 모델이 하나(lego)일 때 보기 2는 같은 모델의 +1 프레임. 라벨에 “@ frame 1 (self, offset +1)”과 PSNR이 표시됩니다.</figcaption></figure>
+<h3>9.3 PSNR과 픽셀 값</h3>
+<p>PSNR은 <b>지금 화면에 보이는 시점</b>에서 두 렌더링을 비교한 값입니다(학습 test 카메라 평가와 다름). 학습 카메라 시점(Back, <code>[</code> <code>]</code>)에서 보면 해당 시점의 차이를 볼 수 있습니다. Statistics에는 마우스가 가리키는 픽셀의 RGB가 보기마다 표시됩니다.</p>
+
+<h2>10. 4DGaussians 결과 변환 (export_4dgs.bat)</h2>
+<p>4DGaussians(hustvl)로 학습한 결과를 SIBR-4D가 재생할 수 있는 모델 폴더로 바꿉니다. 학습 저장소의 변형 네트워크(<code>scene/deformation.py</code>)를 그대로 써서 모든 시간의 Gaussian을 계산해 저장합니다.</p>
+<pre>export_4dgs.bat --ckpt &lt;4DGaussians 출력 폴더&gt; --data &lt;데이터셋 씬 폴더&gt; --out &lt;새 모델 폴더&gt; [--frames N]
+
+예) Neu3D
+export_4dgs.bat --ckpt D:\4DGaussians\output\dynerf\sear_steak ^
+                --data D:\data\dynerf\sear_steak --out D:\models\sear_steak
+예) D-NeRF
+export_4dgs.bat --ckpt D:\4DGaussians\output\dnerf\lego --data D:\data\dnerf\lego --out D:\models\lego</pre>
+<table>
+  <tr><th style="width:24mm">인자</th><th>설명</th></tr>
+  <tr><td>--ckpt</td><td><code>cfg_args</code>와 <code>point_cloud\iteration_N\</code>(point_cloud.ply, deformation.pth 포함)가 있는 4DGaussians 출력 폴더. 가장 큰 iteration을 씁니다.</td></tr>
+  <tr><td>--data</td><td>학습에 쓴 씬 폴더. <code>transforms_train.json</code>이 있으면 D-NeRF, <code>poses_bounds.npy</code>가 있으면 Neu3D(DyNeRF)로 자동 판별해 cameras.json을 만듭니다. 생략하면 --ckpt 폴더에서 찾습니다.</td></tr>
+  <tr><td>--out</td><td>만들 모델 폴더</td></tr>
+  <tr><td>--frames</td><td>시간 단계 수. 기본값 Neu3D 300, D-NeRF 100</td></tr>
+</table>
+<p>변환에는 GPU가 필요하며 Neu3D 300프레임이 약 1분 걸립니다. 결과 크기는 Gaussian 12만 개 × 300프레임 기준 약 4.5 GB입니다.</p>
+
+<h2 class="pb">11. 모델 폴더와 sequence.g4d 형식</h2>
+<p><code>sequence.g4d</code>는 모든 프레임의 변형 결과를 순서대로 담은 이진 파일입니다(리틀 엔디언).</p>
+<pre>헤더 32 바이트 : char[4] 'G4D1' | int32 N(Gaussian 수) | int32 F(프레임 수) | int32 SH 계수 수(16)
+                 | float32 마지막 프레임의 t | 패딩 12 바이트
+프레임마다     : 위치 float32[N×3] | 회전 fp16[N×4] (정규화 쿼터니언 wxyz)
+                 | 크기 fp16[N×3] (exp 적용) | 불투명도 fp16[N] (sigmoid 적용)
+                 | SH fp16[N×48] (계수 순서, 안쪽이 RGB)</pre>
+<p>위치만 float32로 저장해 큰 장면에서도 떨림이 생기지 않게 했고, 나머지는 fp16입니다. 다른 4D 방법(예: 앵커 기반 방법)도 프레임별 Gaussian을 이 형식으로 쓰면 그대로 볼 수 있습니다. 모델 폴더의 <code>point_cloud.ply</code>(기준 형상)와 N이 같아야 합니다.</p>
+
+<h2>12. 메모리 사용 (GPU / RAM)</h2>
+<p>재생을 매끄럽게 하려고 모든 프레임을 GPU 메모리에 올립니다. GPU 여유가 3 GB 아래로 떨어질 모델은 자동으로 <b>프레임을 시스템 RAM에 두고 현재 프레임만 GPU로 복사</b>합니다. Playlist에는 “GPU 4287 MB” 또는 “GPU 46 MB + RAM 4245 MB”처럼 표시됩니다. 두 방식 모두 재생 속도는 비슷합니다(RAM 방식은 프레임이 바뀔 때마다 약 15 MB를 복사).</p>
+<table>
+  <tr><th>예 (RTX 4070 Ti SUPER 16 GB, RAM 64 GB)</th><th>결과</th></tr>
+  <tr><td>Neu3D 4DGS 모델 4개 (각 4.3 GB)</td><td>2개는 GPU, 2개는 RAM 방식. 4개 격자 60 fps</td></tr>
+</table>
+
+<h2>13. 문제 해결</h2>
+<table>
+  <tr><th style="width:56mm">증상</th><th>원인과 해결</th></tr>
+  <tr><td>setup: “NVIDIA driver not found”</td><td>NVIDIA 드라이버를 설치·업데이트합니다.</td></tr>
+  <tr><td>setup: Visual Studio를 찾지 못함</td><td>Visual Studio Installer에서 “C++를 사용한 데스크톱 개발” 워크로드를 추가합니다(MSVC v143 도구 포함).</td></tr>
+  <tr><td>setup: conda 단계 실패</td><td><code>logs\conda.log</code> 확인. 회사·학교 네트워크에서 conda 채널이 막혔을 수 있습니다. 프록시 설정 후 다시 실행합니다.</td></tr>
+  <tr><td>setup: 빌드 실패</td><td><code>logs\build.log</code>에서 “error”를 찾습니다. 의존 라이브러리 다운로드가 중간에 끊긴 경우 <code>setup.bat -Clean</code>으로 다시 빌드합니다.</td></tr>
+  <tr><td>뷰어가 “애플리케이션 제어 정책으로 차단됨”</td><td>Smart App Control이 서명 없는 프로그램을 막는 것입니다(2장 참고).</td></tr>
+  <tr><td>모델이 움직이지 않음</td><td>폴더에 <code>sequence.g4d</code>가 없습니다. export_4dgs.bat으로 변환합니다.</td></tr>
+  <tr><td>“not enough GPU memory”</td><td>다른 모델을 닫거나(File &gt; Close model) 다른 GPU 프로그램을 종료합니다.</td></tr>
+  <tr><td>화면이 비어 있음</td><td>보기에 모델이 지정되지 않았을 수 있습니다. Compare setup에서 보기마다 모델을 고르거나 Playlist 체크박스를 켭니다.</td></tr>
+  <tr><td>시점을 잃음</td><td>Back(R) 또는 Fit(F)을 누릅니다.</td></tr>
+  <tr><td>글자가 너무 작거나 큼</td><td>Ctrl + / Ctrl −</td></tr>
+</table>
+
+<h2 class="pb">14. 사용한 라이브러리와 라이선스</h2>
+<p>저장소에는 소스와 스크립트만 있고, 제3자 바이너리·데이터셋·학습된 모델은 들어 있지 않습니다. 아래 구성 요소는 모두 설치할 때 각 원 출처에서 사용자의 PC로 내려받습니다.</p>
+<table>
+  <tr><th>구성 요소</th><th>버전 / 출처</th><th>라이선스</th></tr>
+  <tr><td>SIBR core</td><td>gitlab.inria.fr/sibr/sibr_core, gaussian_code_release_union @4c4a953</td><td>Apache-2.0</td></tr>
+  <tr><td>SIBR gaussianviewer (수정)</td><td>같은 저장소 src/projects/gaussianviewer</td><td>Gaussian-Splatting License (비상업)</td></tr>
+  <tr><td>diff-gaussian-rasterization</td><td>graphdeco-inria @255c532 (SIBR CMake가 받음)</td><td>Gaussian-Splatting License (비상업)</td></tr>
+  <tr><td>4DGaussians</td><td>github.com/hustvl/4DGaussians @843d5ac (변환에만 사용)</td><td>Apache-2.0</td></tr>
+  <tr><td>Boost / OpenCV / Assimp / Eigen / Embree</td><td>1.71 / 4.8 / 4.1.0 / 3 / 3.6.1 (SIBR CMake가 받음)</td><td>BSL-1.0 / Apache-2.0 / BSD-3 / MPL-2.0 / Apache-2.0</td></tr>
+  <tr><td>FFmpeg</td><td>4.0.2 Windows 빌드 (SIBR CMake가 받음)</td><td>GPL-3.0 이상</td></tr>
+  <tr><td>GLEW / GLFW / Dear ImGui / nativefiledialog</td><td>2.0.0 / 3.2.1 / 1.60 / SIBR 번들</td><td>BSD·MIT / zlib / MIT / zlib</td></tr>
+  <tr><td>Python / NumPy</td><td>3.10 (conda-forge) / &lt; 2.3</td><td>PSF / BSD-3</td></tr>
+  <tr><td>CUDA Toolkit</td><td>12.4.1 (conda, NVIDIA 채널)</td><td>NVIDIA CUDA EULA</td></tr>
+  <tr><td>PyTorch</td><td>2.5.1 cu124</td><td>BSD-3</td></tr>
+  <tr><td>CMake / Ninja</td><td>PyPI 최신</td><td>BSD-3 / Apache-2.0</td></tr>
+  <tr><td>직접 설치: Visual Studio 2022, Git, Miniconda</td><td>—</td><td>각 제품 라이선스</td></tr>
+</table>
+<div class="note"><b>사용 조건</b>: 뷰어 코드는 Inria/MPII의 Gaussian-Splatting License를 따르는 파생물이므로 <b>비상업적 연구·평가 용도로만</b> 쓸 수 있고, 다시 배포할 때는 라이선스 전문과 저작권 표시를 유지해야 합니다. 빌드에 포함되는 FFmpeg은 GPL 빌드이므로, 빌드한 실행 파일 묶음을 다른 사람에게 배포하지 말고 각자 setup.bat으로 빌드하도록 안내해 주세요. 학습 데이터셋(Neu3D CC BY-NC 4.0, D-NeRF 등)으로 만든 모델을 공유할 때는 데이터셋 라이선스를 따릅니다.</div>
+<p class="small">연구에 사용하면 3D Gaussian Splatting(Kerbl et al., SIGGRAPH 2023), SIBR(Bonopera et al.), 그리고 보고 있는 4D 방법(예: 4D Gaussian Splatting, Wu et al., CVPR 2024)을 인용해 주세요.</p>
+
+</body>
+</html>
