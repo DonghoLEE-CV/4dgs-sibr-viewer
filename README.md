@@ -4,6 +4,14 @@ SIBR-4D extends the original 3D Gaussian Splatting viewer (SIBR, Inria) with **t
 dynamic (4D) Gaussian models frame by frame with the original CUDA rasterizer, and compares up to four models
 side by side with a synchronised camera.
 
+![Four 4DGS models of the same scene compared in a 2x2 grid](docs/img/grid4.png)
+<sub>Four 4D Gaussian Splatting runs of the same scene in a 2x2 grid with a shared camera; each view shows its PSNR against view 1.
+Scene: Neu3D *sear_steak* (Li et al., CVPR 2022, CC BY-NC 4.0).</sub>
+
+| Ellipsoids view | Overlay (view 1 blended with view 2) | Points view, 2x2 grid |
+|---|---|---|
+| ![Ellipsoids](docs/img/ellipsoids.png) | ![Overlay](docs/img/overlay.png) | ![Points](docs/img/points_grid.png) |
+
 * Original 3DGS rendering quality (official rasterizer, SH degree 3)
 * Timeline: play / pause / step, loop, playback speed
 * Compare 1-4 models: grid (row / column / 2x2), wipe split, difference |1-2|, overlay blend, flicker
