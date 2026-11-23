@@ -27,6 +27,10 @@ side by side with a synchronised camera.
 
 A detailed guide (Korean) is in [`docs/SIBR-4D_manual_ko.pdf`](docs/SIBR-4D_manual_ko.pdf).
 
+For analysing static 3DGS models (GT evaluation, anti-aliasing and zoom, flicker along camera paths, pruning
+simulation, training-progress playback), see the sister project
+[3DGS-Analyzer](https://github.com/DonghoLEE-CV/3DGS-Analyzer).
+
 ## Requirements
 
 * Windows 10 / 11 (64-bit) and an NVIDIA GPU with compute capability 7.0 or newer, recent driver
