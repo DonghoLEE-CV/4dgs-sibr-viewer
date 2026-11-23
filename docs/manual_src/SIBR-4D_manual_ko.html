@@ -41,7 +41,7 @@
     <tr><td>라이선스</td><td>비상업 연구·평가 용도 (Gaussian-Splatting License, SIBR core는 Apache-2.0)</td></tr>
     <tr><td>문서 버전</td><td>2026-11-23</td></tr>
   </table>
-  <figure style="margin-top:12mm"><img src="../img/grid4.png"><figcaption>같은 씬(Neu3D sear_steak)의 4DGS 학습 결과 4개를 2×2 격자로 동시에 비교하는 화면. 타일마다 1번 대비 PSNR이 표시됩니다.<br>장면 이미지: Neu3D 데이터셋(Li et al., CVPR 2022, CC BY-NC 4.0)으로 학습한 모델의 렌더링</figcaption></figure>
+  <figure style="margin-top:12mm"><img src="../img/motion.png"><figcaption>같은 씬(Neu3D sear_steak)의 4DGS 학습 결과 4개를 움직임 열지도(0번 프레임 대비 이동량)로 동시에 비교하는 화면.<br>장면 이미지: Neu3D 데이터셋(Li et al., CVPR 2022, CC BY-NC 4.0)으로 학습한 모델의 렌더링</figcaption></figure>
 </div>
 
 <div class="pb"></div>
@@ -114,7 +114,8 @@
 <pre>run_viewer.bat                                   (빈 창으로 시작)
 run_viewer.bat D:\models\sear_steak              (모델 1개)
 run_viewer.bat D:\models\A D:\models\B D:\models\C D:\models\D   (최대 4개 비교)
-run_viewer.bat D:\models\A --mode 8              (Ellipsoids 보기로 시작)</pre>
+run_viewer.bat D:\models\A --mode 8              (Ellipsoids 보기로 시작)
+run_viewer.bat D:\models\A D:\models\B --cmp 2 --frame 150   (와이프 비교, 150프레임에서 시작)</pre>
 <p>모델 폴더를 <code>run_viewer.bat</code> 아이콘 위에 끌어다 놓아도 됩니다.</p>
 <h3>4.2 무엇을 열어야 하나 — “모델 폴더”</h3>
 <p>열 대상은 ply 파일 하나가 아니라 <b>모델 폴더</b>입니다. 모델 폴더에는 다음이 들어 있습니다.</p>
@@ -132,7 +133,7 @@ run_viewer.bat D:\models\A --mode 8              (Ellipsoids 보기로 시작)</
 <div class="note">서버에서 학습한 4DGaussians 출력 폴더를 바로 열면 <code>sequence.g4d</code>가 없어서 움직이지 않는 기준 형상만 보입니다. 재생하려면 먼저 10장의 <code>export_4dgs.bat</code>으로 변환하세요. 원본 3DGS 결과 폴더는 그대로 열립니다.</div>
 
 <h2>5. 화면 구성</h2>
-<figure><img src="../img/points_grid.png"><figcaption>왼쪽: 재생목록과 학습 카메라 목록 · 가운데: 보기(여기서는 Points 모드, 격자 4개) · 오른쪽: Compare setup / Render settings / Statistics · 아래: 타임라인</figcaption></figure>
+<figure><img src="../img/grid4.png"><figcaption>왼쪽: 재생목록과 학습 카메라 목록 · 가운데: 보기(격자 4개, 각 보기에 PSNR) · 오른쪽: Compare setup / Render settings / Statistics · 아래: 타임라인</figcaption></figure>
 <table>
   <tr><th style="width:36mm">영역</th><th>내용</th></tr>
   <tr><td>메뉴바</td><td>File(열기·닫기·종료), View(보기 모드·배경·안티에일리어싱), Compare(비교 방식·기준 모델 교체), Camera(학습 카메라·FOV·조작 감도), Frame(재생·이동·FPS), Panels(패널 표시·크기 초기화·글자 크기). 오른쪽 회색 글씨는 마지막 상태 메시지입니다.</td></tr>
@@ -184,6 +185,7 @@ run_viewer.bat D:\models\A --mode 8              (Ellipsoids 보기로 시작)</
   <tr><td>7</td><td>Scale heat</td><td>가장 긴 축 크기(log10). 큰 Gaussian이나 floater 찾기</td></tr>
   <tr><td>8</td><td>Ellipsoids</td><td>각 Gaussian을 타원체로 표시(원본 SIBR 방식). 설정: Opacity cut(이 불투명도 이상은 실선, 나머지는 반투명으로 섞음), Size scale(크기 배율), Wireframe(선으로만)</td></tr>
 </table>
+<figure><img src="../img/velocity.png"><figcaption>Velocity heat: 직전 프레임 대비 이동량. 프레임 사이에 움직이는 부분(손, 집게, 팬)이 밝게 보입니다.</figcaption></figure>
 <p>열지도(4~7)의 범위는 Auto heat range가 장면 크기에 맞춰 정하고, 끄면 min / max를 직접 입력합니다. Splats 계열에서는 Scaling modifier(Gaussian 크기 배율)와 Antialiasing을 쓸 수 있습니다. 배경색은 View 메뉴에서 모델 기본값 / 검정 / 흰색 중에 고릅니다.</p>
 <figure><img src="../img/ellipsoids.png"><figcaption>Ellipsoids 모드(D-NeRF lego, 4DGS). 오른쪽 Render settings에 Opacity cut, Size scale, Wireframe 설정이 있습니다.</figcaption></figure>
 
@@ -204,7 +206,8 @@ run_viewer.bat D:\models\A --mode 8              (Ellipsoids 보기로 시작)</
   <tr><td>Overlay</td><td>보기 1 위에 보기 2를 Blend 비율(0~1)로 겹칩니다. Flicker를 켜면 1과 2를 지정한 Hz로 번갈아 보여 줍니다(작은 차이를 눈으로 찾기 좋음).</td></tr>
 </table>
 <p>Wipe / Difference / Overlay는 보기 1과 보기 2를 씁니다. 보기 2가 비어 있으면 열려 있는 다른 모델을 자동으로 채웁니다. <b>모델이 하나뿐이면</b> 같은 모델의 다른 프레임(기본 +1, Compare setup의 Frame offset으로 조절)과 비교하므로, 프레임 사이 변화나 떨림을 볼 때 씁니다.</p>
-<figure><img src="../img/overlay.png"><figcaption>Overlay 자기비교: 모델이 하나(lego)일 때 보기 2는 같은 모델의 +1 프레임. 라벨에 “@ frame 1 (self, offset +1)”과 PSNR이 표시됩니다.</figcaption></figure>
+<figure><img src="../img/wipe.png"><figcaption>Wipe: 노란 선 왼쪽은 보기 1, 오른쪽은 보기 2. 선을 마우스로 끌어 옮깁니다.</figcaption></figure>
+<figure><img src="../img/diff.png"><figcaption>Difference |1 − 2| × gain: 두 모델이 다르게 복원한 영역(왼쪽 위 창가의 안개 등)이 밝게 보입니다.</figcaption></figure>
 <h3>9.3 PSNR과 픽셀 값</h3>
 <p>PSNR은 <b>지금 화면에 보이는 시점</b>에서 두 렌더링을 비교한 값입니다(학습 test 카메라 평가와 다름). 학습 카메라 시점(Back, <code>[</code> <code>]</code>)에서 보면 해당 시점의 차이를 볼 수 있습니다. Statistics에는 마우스가 가리키는 픽셀의 RGB가 보기마다 표시됩니다.</p>
 

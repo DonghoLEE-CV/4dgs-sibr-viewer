@@ -5,12 +5,16 @@ dynamic (4D) Gaussian models frame by frame with the original CUDA rasterizer, a
 side by side with a synchronised camera.
 
 ![Four 4DGS models of the same scene compared in a 2x2 grid](docs/img/grid4.png)
-<sub>Four 4D Gaussian Splatting runs of the same scene in a 2x2 grid with a shared camera; each view shows its PSNR against view 1.
-Scene: Neu3D *sear_steak* (Li et al., CVPR 2022, CC BY-NC 4.0).</sub>
+<sub>Four 4D Gaussian Splatting runs of the same scene in a 2x2 grid with a shared camera and frame; each view shows its PSNR against view 1.</sub>
 
-| Ellipsoids view | Overlay (view 1 blended with view 2) | Points view, 2x2 grid |
-|---|---|---|
-| ![Ellipsoids](docs/img/ellipsoids.png) | ![Overlay](docs/img/overlay.png) | ![Points](docs/img/points_grid.png) |
+| Motion heat map (movement since frame 0) | Velocity heat map (movement since the previous frame) |
+|---|---|
+| ![Motion heat](docs/img/motion.png) | ![Velocity heat](docs/img/velocity.png) |
+| **Wipe** (drag the split line) | **Difference** \|view 1 - view 2\| x gain |
+| ![Wipe](docs/img/wipe.png) | ![Difference](docs/img/diff.png) |
+
+![Ellipsoids view](docs/img/ellipsoids.png)
+<sub>Ellipsoids view with its settings (opacity cut, size scale, wireframe). Scenes: Neu3D *sear_steak* (Li et al., CVPR 2022, CC BY-NC 4.0) and D-NeRF *lego* (Pumarola et al., CVPR 2021).</sub>
 
 * Original 3DGS rendering quality (official rasterizer, SH degree 3)
 * Timeline: play / pause / step, loop, playback speed
@@ -58,6 +62,9 @@ conda env create -p .\env -f environment.yml
 ```bat
 :: open one to four model folders (or drag them onto the window)
 run_viewer.bat path\to\model_A path\to\model_B
+
+:: options: --mode 1-8 (view mode), --cmp 0-4 (single, grid, wipe, difference, overlay), --frame N, --views 1-4
+run_viewer.bat path\to\model_A path\to\model_B --cmp 2 --frame 150
 
 :: convert a 4DGaussians result into a playable model folder
 export_4dgs.bat --ckpt path\to\4DGaussians\output\dynerf\sear_steak --data path\to\dynerf\sear_steak --out models\sear_steak

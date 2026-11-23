@@ -595,14 +595,17 @@ SIBR_EXP_ULR_EXPORT int sibr4dMain(int ac, char** av)
 	}
 
 	Settings s;
+	int startFrame = 0;
 	if (nSel() > 1) s.cmp = C_SIDE;
-	for (int i = 1; i + 1 < ac; i++)   // --mode 1..8 (view mode), --cmp 0..4 (compare mode)
+	for (int i = 1; i + 1 < ac; i++)   // --mode 1..8 (view mode), --cmp 0..4 (compare mode), --frame N, --views 1..4
 	{
 		if (std::string(av[i]) == "--mode") s.mode = std::max(0, std::min(M_COUNT - 1, std::atoi(av[i + 1]) - 1));
 		if (std::string(av[i]) == "--cmp") s.cmp = std::max(0, std::min(C_COUNT - 1, std::atoi(av[i + 1])));
+		if (std::string(av[i]) == "--frame") startFrame = std::max(0, std::atoi(av[i + 1]));
+		if (std::string(av[i]) == "--views") s.views = std::max(1, std::min(4, std::atoi(av[i + 1])));
 	}
-	s.views = std::max(1, nSel());
-	int frame = 0; bool play = false, loop = true; float fps = 30.f; double accum = 0.0;
+	if (s.views == 4 && nSel() < 4) s.views = std::max(1, nSel());
+	int frame = startFrame; bool play = false, loop = true; float fps = 30.f; double accum = 0.0;
 	UiPrefs prefs; loadPrefs(prefs);
 	bool& showPlaylist = prefs.playlist; bool& showInfo = prefs.info; bool& showTimeline = prefs.timeline;
 	OrbitCam cam; const Model* camModel = nullptr;

@@ -1,5 +1,5 @@
 @echo off
-REM SIBR-4D viewer.  usage: run_viewer.bat [model folder] [model folder] ... [--mode 1-8] [--cmp 0-4]
+REM SIBR-4D viewer.  usage: run_viewer.bat [model folder] ... [--mode 1-8] [--cmp 0-4] [--frame N] [--views 1-4]
 REM You can also drag model folders onto this file or onto the viewer window.
 setlocal
 set "HERE=%~dp0"
