@@ -1,4 +1,4 @@
-# SIBR-4D (11-23): YUView-style 3DGS / 4DGS comparison viewer (logic lives in renderer/G4DApp.cpp)
+# SIBR-4D (11-23): YUView-style 4DGS comparison viewer (logic lives in renderer/G4DApp.cpp)
 project(SIBR_gaussian4D_app)
 
 file(GLOB SOURCES "*.cpp")

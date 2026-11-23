@@ -1,4 +1,4 @@
-# SIBR-4D — a 3DGS / 4DGS viewer built on the original SIBR Gaussian viewer
+# SIBR-4D — a 4DGS viewer built on the original SIBR Gaussian viewer
 
 SIBR-4D extends the original 3D Gaussian Splatting viewer (SIBR, Inria) with **time**: it plays back
 dynamic (4D) Gaussian models frame by frame with the original CUDA rasterizer, and compares up to four models
@@ -23,7 +23,6 @@ side by side with a synchronised camera.
 * View modes: splats, DC colour, points, motion / velocity / opacity / scale heat maps, ellipsoids
 * Orbit / pan / zoom / FOV zoom / fly camera, snapping to training cameras
 * Drag and drop of model folders, resizable panels, adjustable UI text size
-* Static 3DGS model folders open as well (one frame)
 
 A detailed guide (Korean) is in [`docs/SIBR-4D_manual_ko.pdf`](docs/SIBR-4D_manual_ko.pdf).
 
@@ -104,7 +103,7 @@ SIBR (Bonopera et al.), and the 4D method whose models you view (e.g. 4D Gaussia
 
 ### 한국어 요약
 
-원본 3DGS SIBR 뷰어에 시간축(4D 재생)과 최대 4개 모델 비교 기능을 더한 뷰어입니다.
+원본 SIBR Gaussian 뷰어에 시간축(4D 재생)과 최대 4개 4DGS 모델 비교 기능을 더한 뷰어입니다.
 `setup.bat` 한 번이면 필요한 환경을 이 폴더 안에 만들고 빌드합니다. 그 뒤로는 `run_viewer.bat`으로
 실행하고, 4DGaussians 결과는 `export_4dgs.bat`으로 변환합니다. 자세한 설명은
 `docs/SIBR-4D_manual_ko.pdf`에 있습니다. 비상업 연구·평가 용도로만 사용할 수 있습니다.

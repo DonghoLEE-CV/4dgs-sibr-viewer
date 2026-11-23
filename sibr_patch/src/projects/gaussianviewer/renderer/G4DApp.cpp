@@ -559,7 +559,7 @@ SIBR_EXP_ULR_EXPORT int sibr4dMain(int ac, char** av)
 {
 	sibr::CommandLineArgs::parseMainArgs(ac, av);
 	sibr::WindowArgs wargs;
-	sibr::Window window("SIBR-4D (3DGS / 4DGS viewer)", sibr::Vector2i(40, 40), wargs);
+	sibr::Window window("SIBR-4D (4DGS viewer)", sibr::Vector2i(40, 40), wargs);
 	glfwSetDropCallback(window.GLFW(), onDrop);
 
 	std::vector<std::unique_ptr<Model>> models;
